@@ -1,0 +1,42 @@
+name: Django Deploy on Runner
+
+on:
+  push:
+    branches:
+      - main  # Запуск при пуше в ветку main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Шаг 1: Клонирование репозитория
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Шаг 2: Установка Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9  # Версия Python для проекта
+
+    # Шаг 3: Установка зависимостей
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip python3-venv
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+
+    # Шаг 4: Применение миграций
+    - name: Apply Migrations
+      run: |
+        source venv/bin/activate
+        python3 manage.py migrate
+
+    # Шаг 5: Запуск сервера
+    - name: Run Development Server
+      run: |
+        source venv/bin/activate
+        python3 manage.py runserver
