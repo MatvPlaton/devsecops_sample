@@ -67,3 +67,46 @@ jobs:
      with:
        name: docker-scout-findings
        path: scout-report.sarif
+ deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9  
+        
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip python3-venv
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+    - name: Apply Migrations
+      run: |
+        source venv/bin/activate
+        python3 manage.py migrate
+    - name: Run Development Server
+      run: |
+        source venv/bin/activate
+        nohup python3 manage.py runserver 0.0.0.0:8000 &
+        
+    - name: Install Nikto
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y nikto
+    - name: Verify Nikto Installation
+      run: nikto -Version
+
+    - name: Run Nikto Scan
+      run: |
+        nikto -h http://127.0.0.1:8000 -output nikto-report.html
+    - name: Upload Nikto Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: nikto-report
+        path: nikto-report.html
