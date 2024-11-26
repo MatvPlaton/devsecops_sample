@@ -33,7 +33,7 @@ jobs:
     - name: Apply Migrations
       run: |
         source venv/bin/activate
-        python3 manage.py migrate
+        nohup python3 manage.py migrate &
 
     # Шаг 5: Запуск сервера
     - name: Run Development Server
