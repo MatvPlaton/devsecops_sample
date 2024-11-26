@@ -36,16 +36,20 @@ jobs:
         source venv/bin/activate
         nohup python3 manage.py runserver 0.0.0.0:8000 &
         
-    - name: Run OWASP ZAP Baseline Scan
+    - name: Install Nikto
       run: |
-        echo "Starting OWASP ZAP scan..."
-        docker pull owasp/zap2docker-stable
-        docker run --rm -v $(pwd):/zap/wrk:rw -t owasp/zap2docker-stable zap-baseline.py \
-          -t http://localhost:8000 \
-          -r dast_report.html || true
+        sudo apt-get update
+        sudo apt-get install -y nikto
 
-    - name: Upload ZAP Report
+    - name: Verify Nikto Installation
+      run: nikto -Version
+
+    - name: Run Nikto Scan
+      run: |
+        nikto -h http://127.0.0.1:8000 -output nikto-report.html
+
+    - name: Upload Nikto Report
       uses: actions/upload-artifact@v3
       with:
-        name: ZAP Report
-        path: dast_report.html
+        name: nikto-report
+        path: nikto-report.html
