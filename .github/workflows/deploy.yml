@@ -1,4 +1,4 @@
-name: Django Deploy on Runner
+name: Deploy on Runner
 
 on:
   push:
@@ -35,21 +35,30 @@ jobs:
       run: |
         source venv/bin/activate
         nohup python3 manage.py runserver 0.0.0.0:8000 &
-        
-    - name: Install Nikto
+        sleep 15
+    - name: Install OWASP ZAP
       run: |
-        sudo apt-get update
-        sudo apt-get install -y nikto
+        echo "Installing OWASP ZAP..."
+        sudo apt update
+        sudo apt install -y wget openjdk-11-jdk
+        wget https://github.com/zaproxy/zaproxy/releases/download/v2.12.0/ZAP_2_12_0_unix.sh
+        chmod +x ZAP_2_12_0_unix.sh
+        ./ZAP_2_12_0_unix.sh -q  # Install ZAP silently
+        export PATH=$PATH:/opt/zaproxy
 
-    - name: Verify Nikto Installation
-      run: nikto -Version
-
-    - name: Run Nikto Scan
+    # Step 4: Run OWASP ZAP Scan
+    - name: Run OWASP ZAP Baseline Scan
       run: |
-        nikto -h http://127.0.0.1:8000 -output nikto-report.html
+        echo "Running OWASP ZAP against localhost:8080..."
+        zap.sh -daemon -host 127.0.0.1 -port 8090 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true
+        sleep 15  # Allow ZAP to initialize
+        curl -X GET "http://127.0.0.1:8090/JSON/ascan/action/scan/?url=http://127.0.0.1:8000&recurse=true"
+        sleep 60  # Wait for the scan to complete
+        curl -X GET "http://127.0.0.1:8090/OTHER/core/other/htmlreport/" -o dast_report.html
 
-    - name: Upload Nikto Report
+    # Step 5: Upload the DAST Report
+    - name: Upload ZAP Report
       uses: actions/upload-artifact@v3
       with:
-        name: nikto-report
-        path: nikto-report.html
+        name: ZAP Report
+        path: zap_report.html
