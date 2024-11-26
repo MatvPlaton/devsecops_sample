@@ -3,24 +3,21 @@ name: Django Deploy on Runner
 on:
   push:
     branches:
-      - main  # Запуск при пуше в ветку main
+      - main  
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # Шаг 1: Клонирование репозитория
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Шаг 2: Установка Python
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9  # Версия Python для проекта
-
-    # Шаг 3: Установка зависимостей
+        python-version: 3.9  
+        
     - name: Install Dependencies
       run: |
         sudo apt update
@@ -29,14 +26,26 @@ jobs:
         source venv/bin/activate
         pip install -r requirements.txt
 
-    # Шаг 4: Применение миграций
     - name: Apply Migrations
       run: |
         source venv/bin/activate
         python3 manage.py migrate
 
-    # Шаг 5: Запуск сервера
     - name: Run Development Server
       run: |
         source venv/bin/activate
-        nohup python3 manage.py runserver &
+        nohup python3 manage.py runserver 0.0.0.0:8000 &
+        
+    - name: Run OWASP ZAP Baseline Scan
+      run: |
+        echo "Starting OWASP ZAP scan..."
+        docker pull owasp/zap2docker-stable
+        docker run --rm -v $(pwd):/zap/wrk:rw -t owasp/zap2docker-stable zap-baseline.py \
+          -t http://localhost:8000 \
+          -r dast_report.html || true
+
+    - name: Upload ZAP Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: ZAP Report
+        path: dast_report.html
